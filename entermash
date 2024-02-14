@@ -1,0 +1,168 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+
+public class EnterMash {
+
+    private static ArrayList<Score> ranking = new ArrayList<>();
+
+    public static void main(String[] args) {
+    	
+        loadRanking();
+
+        //ゲームの事前説明
+        System.out.println("連打ゲームを開始します。(制限時間10秒)");
+        System.out.println("制限時間内にEnterキーを連打してください(押し続ける行為は禁止)");
+        System.out.println("ゲームスタートの表示が出てからゲームスタートです\n");
+        System.out.println("準備ができたらEnterキーを押してください(カウントダウンが始まります)");
+
+        try {
+            System.in.read();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        //ゲーム開始前のカウントダウン
+        countDown();
+
+        char targetKey      = '\n'; // Enterキー
+        int gameTime        = 5; // ゲームの制限時間
+        long gameStartTime  = System.currentTimeMillis();
+        int totalHits       = 0;
+
+
+        System.out.println("ゲームスタート!");
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+
+        try {
+            while (System.currentTimeMillis() - gameStartTime < gameTime * 1000) {
+                char inputKey = (char) reader.read();
+                if (inputKey == targetKey) {
+                    totalHits++;
+                    System.out.print(totalHits);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
+        System.out.println("ゲーム終了！");
+        System.out.println("総連打数: " + totalHits + "\n");
+        if(totalHits < 320) {       //連打数の制限
+
+            // 名前を入力するためにプレイヤーに促す
+            System.out.println("名前を入力してください (名前入力、enter押下後に\"end\" と入力して終了):");
+            try {
+                StringBuilder nameBuilder = new StringBuilder();
+                String input;
+                while (!(input = reader.readLine()).equalsIgnoreCase("end")) {
+                    nameBuilder.append(input);
+                }
+                String name = nameBuilder.toString();
+                saveScore(name, totalHits);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("押し続ける行為を発見、記録は残りません\n");
+        }
+
+        //ランキングの表示
+        dispRanking();
+    }
+
+    //ゲーム開始前のカウントダウン
+    public static void countDown() {
+        int countdownDuration = 3; // カウントダウンの秒数
+
+        for (int i = countdownDuration; i >= 0; i--) {
+            System.out.println(i + "秒");
+
+            try {
+                Thread.sleep(1000); // 1秒待機
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    
+    //ランキングを指定ファイルからロード
+    private static void loadRanking() {
+        try (BufferedReader br = new BufferedReader(new FileReader("ranking.txt"))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] parts = line.split(",");
+                if (parts.length == 2) {
+                    String name = parts[0];
+                    int score = Integer.parseInt(parts[1]);
+                    ranking.add(new Score(name, score));
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    //スコアの保存
+    private static void saveScore(String name, int score) {
+        ranking.add(new Score(name, score));
+
+        // スコアをソート
+        int n = ranking.size();
+        for (int i = 0; i < n - 1; i++) {
+            for (int j = 0; j < n - i - 1; j++) {
+                if (ranking.get(j).getScore() < ranking.get(j + 1).getScore()) {
+                    // スコアを交換
+                    Score temp = ranking.get(j);
+                    ranking.set(j, ranking.get(j + 1));
+                    ranking.set(j + 1, temp);
+                }
+            }
+        }
+
+        // ランキングを保存
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter("ranking.txt"))) {
+            for (Score s : ranking) {
+                writer.write(s.getName() + "," + s.getScore() + ",");
+                writer.newLine();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    //ランキングの表示
+    private static void dispRanking() {
+        System.out.println("ランキング:");
+        for (int i = 0; i < Math.min(5, ranking.size()); i++) {
+            Score score = ranking.get(i);
+            System.out.println((i + 1) + ". " + score.getName() + ": " + score.getScore() + "回");
+        }
+    }
+}
+
+
+class Score {
+    private String name;
+    private int score;
+    
+    public Score(String name, int score) {
+        this.name = name;
+        this.score = score;
+    }
+
+    public String getName() {
+        return this.name;
+    }
+
+    public int getScore() {
+        return this.score;
+    }
+}
+
